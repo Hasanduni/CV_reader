@@ -201,4 +201,9 @@ if uploaded_files:
     if st.button("Download JSON"):
         st.download_button(
             label="Save Results",
-            file_name="cv_results.json"
+            file_name="cv_results.json",
+            mime="application/json",
+            data=json.dumps(results, indent=2)
+        )
+else:
+    st.info("Upload one or more CVs in PDF or DOCX format.")
