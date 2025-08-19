@@ -1,63 +1,90 @@
 import streamlit as st
-import re
 import pandas as pd
+import re
+import os
 from PyPDF2 import PdfReader
 
-# Function to extract text from PDF
+# --- Function to extract text from uploaded PDF ---
 def extract_text_from_pdf(uploaded_file):
-    text = ""
     pdf_reader = PdfReader(uploaded_file)
+    text = ""
     for page in pdf_reader.pages:
-        text += page.extract_text() or ""
+        text += page.extract_text() + "\n"
     return text
 
-# Function to parse CV details
+# --- Function to parse CV text ---
 def parse_cv(text):
-    details = {}
+    data = {
+        "University / Educational Institution": [],
+        "Qualifications / Degrees": [],
+        "Skills": [],
+        "Tools & Technologies": [],
+        "Internships": [],
+        "Previous Experience (total years)": [],
+        "Certifications": [],
+        "Current Role": []
+    }
 
-    # Extract Name (first line assumption)
-    details["Name"] = text.split("\n")[0].strip()
+    # Example regex / keyword extraction (basic - can be improved with NLP)
+    universities = re.findall(r"(University of [A-Za-z ]+|[A-Za-z ]+ University)", text)
+    degrees = re.findall(r"(Bachelor|Master|PhD|Diploma|BSc|MSc|MBA|BE|ME|BS|MS)[^,\n]*", text)
+    skills = re.findall(r"(Python|Java|C\+\+|SQL|Machine Learning|Data Science|Deep Learning|Statistics|R|Tableau|PowerBI)", text, re.IGNORECASE)
+    tools = re.findall(r"(TensorFlow|PyTorch|Scikit-learn|Pandas|NumPy|Excel|Git|Docker|Kubernetes|Hadoop|Spark)", text, re.IGNORECASE)
+    internships = re.findall(r"(Internship at [A-Za-z ]+|Intern at [A-Za-z ]+)", text)
+    experience_years = re.findall(r"(\d+)\+?\s+years", text)
+    certifications = re.findall(r"(Certified [A-Za-z ]+|AWS Certification|Azure Certification|Google Cloud Certification)", text)
+    current_roles = re.findall(r"(Software Engineer|Data Scientist|ML Engineer|Research Assistant|Analyst|Developer)[^,\n]*", text)
 
-    # Extract Email
-    email_match = re.search(r'[\w\.-]+@[\w\.-]+', text)
-    details["Email"] = email_match.group(0) if email_match else "Not Found"
+    # Store extracted data
+    data["University / Educational Institution"] = list(set(universities))
+    data["Qualifications / Degrees"] = list(set(degrees))
+    data["Skills"] = list(set(skills))
+    data["Tools & Technologies"] = list(set(tools))
+    data["Internships"] = list(set(internships))
+    data["Previous Experience (total years)"] = list(set(experience_years))
+    data["Certifications"] = list(set(certifications))
+    data["Current Role"] = list(set(current_roles))
 
-    # Extract Phone
-    phone_match = re.search(r'\+?\d[\d -]{8,}\d', text)
-    details["Phone"] = phone_match.group(0) if phone_match else "Not Found"
+    return data
 
-    # Extract Skills (basic keyword match)
-    skills_keywords = ["Python", "Java", "SQL", "C++", "Machine Learning", "Data Analysis", "Excel", "TensorFlow"]
-    skills_found = [skill for skill in skills_keywords if re.search(skill, text, re.IGNORECASE)]
-    details["Skills"] = ", ".join(skills_found) if skills_found else "Not Found"
-
-    # Extract Education (keywords search)
-    education_match = re.findall(r"(B\.Sc|M\.Sc|Bachelor|Master|PhD|Degree|Diploma).*", text, re.IGNORECASE)
-    details["Education"] = ", ".join(education_match) if education_match else "Not Found"
-
-    return details
-
-
-# Streamlit App
+# --- Streamlit UI ---
 st.title("📄 CV Parser App")
+st.write("Upload a CV (PDF) and extract structured information.")
 
-uploaded_file = st.file_uploader("Upload a CV (PDF only)", type=["pdf"])
+uploaded_file = st.file_uploader("Upload CV (PDF only)", type=["pdf"])
 
 if uploaded_file is not None:
-    st.success("✅ File uploaded successfully!")
-
-    # Extract text
     text = extract_text_from_pdf(uploaded_file)
+    extracted_data = parse_cv(text)
 
-    # Parse CV
-    parsed_details = parse_cv(text)
+    st.subheader("📊 Extracted CV Information")
 
-    # Show Results
-    st.subheader("🔎 Extracted Information")
-    for key, value in parsed_details.items():
-        st.write(f"**{key}:** {value}")
+    # Convert to DataFrame for display
+    df = pd.DataFrame([(k, ", ".join(v) if v else "-") for k, v in extracted_data.items()],
+                      columns=["Category", "Extracted Information"])
 
-    # Convert to DataFrame for table view
-    df = pd.DataFrame(parsed_details.items(), columns=["Field", "Value"])
-    st.subheader("📊 CV Data Table")
     st.table(df)
+
+    # --- Download options ---
+    csv = df.to_csv(index=False).encode("utf-8")
+    excel_file = "cv_extracted.xlsx"
+    df.to_excel(excel_file, index=False)
+
+    st.download_button(
+        label="📥 Download CSV",
+        data=csv,
+        file_name="cv_extracted.csv",
+        mime="text/csv",
+    )
+
+    with open(excel_file, "rb") as f:
+        st.download_button(
+            label="📥 Download Excel",
+            data=f,
+            file_name="cv_extracted.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    # Clean up
+    if os.path.exists(excel_file):
+        os.remove(excel_file)
