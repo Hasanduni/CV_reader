@@ -2,6 +2,7 @@ import streamlit as st
 import re
 from PyPDF2 import PdfReader
 from dateutil import parser
+from dateutil.relativedelta import relativedelta
 from datetime import datetime
 import pandas as pd
 import os
@@ -17,12 +18,17 @@ def extract_text_from_pdf(uploaded_file):
 
 # --- Parse CV text ---
 def parse_cv(text, candidate_id=9999):
+    # Universities
     uni_patterns = re.findall(r"([A-Za-z ]+(University|Institute)[^\n]+)", text)
+    # Degrees/Courses
     degrees = re.findall(r"(Bachelor|Diploma|BSc|Undergraduate)[^,\n]*", text)
+    # Internships
     internships = re.findall(r"(Internship at [A-Za-z ]+|Intern at [A-Za-z ]+|[A-Za-z ] Intern)", text)
+    # Current roles
     current_roles = re.findall(r"(Software Engineer|Data Scientist|ML Engineer|Research Assistant|Analyst|Developer)[^,\n]*", text)
-
-     exp_patterns = re.findall(
+    
+    # Experience patterns
+    exp_patterns = re.findall(
         r"([A-Za-z &]*(?:Intern|Engineer|Scientist|Analyst)[^\n]*(?:\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|"
         r"May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)?\s?\d{4})"
         r"\s?[–-]\s?(Present|\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|"
@@ -30,11 +36,14 @@ def parse_cv(text, candidate_id=9999):
         text
     )
 
+    # Skills and Tools
     skills = re.findall(r"(Python|Java|SQL|Machine Learning|Deep Learning|Data Science|R|C\+\+)", text, re.IGNORECASE)
     tools = re.findall(r"(TensorFlow|PyTorch|Pandas|NumPy|Excel|Git|Docker|Spark|scikit-learn)", text, re.IGNORECASE)
-
-    total_exp_years = 0
+    
+    # --- Calculate total experience in months ---
+    total_exp_months = 0
     experience_lines = []
+
     for exp_line in exp_patterns:
         line = exp_line[0].strip()
         experience_lines.append(line)
@@ -47,8 +56,13 @@ def parse_cv(text, candidate_id=9999):
             except:
                 continue
             end_date = datetime.today() if end.lower() == "present" else parser.parse(end)
-            total_exp_years += (end_date - start_date).days / 365.0
-    total_exp_years = round(total_exp_years, 1)
+            diff = relativedelta(end_date, start_date)
+            total_exp_months += diff.years * 12 + diff.months
+
+    # Convert months to "X years Y months"
+    years = total_exp_months // 12
+    months = total_exp_months % 12
+    experience_str = f"{int(years)} years {int(months)} months"
 
     row = {
         "Candidate_ID": candidate_id,
@@ -56,14 +70,13 @@ def parse_cv(text, candidate_id=9999):
         "Course": "; ".join(degrees) if degrees else "-",
         "Language_Proficiency": "English",
         "Previous_Internship": "; ".join(internships) if internships else "None",
-        "Experience_Years": total_exp_years,
+        "Experience": experience_str,
         "Skills": ", ".join(list(set(skills + tools))) if (skills or tools) else "-",
         "Current_Role": "; ".join(current_roles) if current_roles else "-",
         "Target_Role": "-"
     }
 
     return row, experience_lines
-
 
 # --- Streamlit UI ---
 st.set_page_config(page_title="CV Parser", page_icon="📄", layout="wide")
@@ -78,12 +91,12 @@ if uploaded_file is not None:
 
     # --- Candidate Info Card ---
     st.subheader("✅ Parsed CV (Profile Summary)")
-
     col1, col2 = st.columns(2)
+
     with col1:
         st.markdown(
             f"""
-           <div style="background-color:#ADD8E6; color:#000; padding:20px; border-radius:12px;
+            <div style="background-color:#ADD8E6; color:#000; padding:20px; border-radius:12px;
                 box-shadow:0 4px 12px rgba(0,0,0,0.1);">
                 <h3 style="margin-top:0;color:#2c3e50;">👤 Candidate #{row['Candidate_ID']}</h3>
                 <p><b>🎓 University:</b> {row['University']}</p>
@@ -101,12 +114,14 @@ if uploaded_file is not None:
                 box-shadow:0 4px 12px rgba(0,0,0,0.1);">
                 <p><b>💼 Current Role:</b> {row['Current_Role']}</p>
                 <p><b>👨‍🎓 Previous Internships:</b> {row['Previous_Internship']}</p>
-                <p><b>⏳ Experience:</b> {row['Experience_Years']} years</p>
+                <p><b>⏳ Experience:</b> {row['Experience']}</p>
                 <p><b>🎯 Target Role:</b> {row['Target_Role']}</p>
             </div>
             """,
             unsafe_allow_html=True
         )
+
+    # --- Skills & Tools ---
     if row["Skills"] != "-":
         st.markdown("### 🛠 Skills & Tools")
         skills_list = [s.strip() for s in row["Skills"].split(",")]
@@ -116,7 +131,7 @@ if uploaded_file is not None:
         ])
         st.markdown(skill_html, unsafe_allow_html=True)
 
-        # --- Detailed Experiences ---
+    # --- Detailed Experiences ---
     if experience_lines:
         with st.expander("📂 Detailed Experience History"):
             for exp in experience_lines:
