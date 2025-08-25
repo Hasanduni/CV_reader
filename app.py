@@ -27,9 +27,11 @@ def parse_cv(text, candidate_id=9999):
     internships = re.findall(r"(?:Internship at|Intern at|[A-Za-z ]+ Intern)", text)
 
     # Current roles
-    current_roles = re.findall(r"(?:Current Role:\s*-?\s*)?(Software Engineer|Data Scientist|ML Engineer|Research Assistant|Analyst|Developer|Data Analyst)[^,\n]*", text)
-
-    # Experience patterns
+    current_roles = re.findall(
+        r"(?:Current Role:\s*-?\s*)([A-Za-z ]+)", 
+        text
+    )
+        # Experience patterns
     exp_patterns = re.findall(
         r"((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|"
         r"Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s?\d{4}\s*[–-]\s*"
