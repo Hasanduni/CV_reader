@@ -4,11 +4,16 @@ from datetime import datetime
 import pandas as pd
 import os
 import json
-import requests
+from openai import OpenAI
 
 # --- Glama AI API Key ---
 GLAMA_API_KEY = "glama_eyJhcGlLZXkiOiIxNWVmYzFmNS03ZDFhLTQyMGItODAwYy1iZjQ1ZDhhMzljNDkifQ"
-GLAMA_API_URL = "https://gateway.glama.ai/v1/chat/completions"
+
+# Initialize OpenAI-compatible client for Glama
+client = OpenAI(
+    api_key=GLAMA_API_KEY,
+    base_url="https://glama.ai/api/gateway/openai/v1"
+)
 
 # --- Extract text from PDF ---
 def extract_text_from_pdf(uploaded_file):
@@ -33,27 +38,19 @@ def extract_cv_with_glama(text, candidate_id=9999):
     CV Text:
     {text}
     """
-    headers = {
-        "Authorization": f"Bearer {GLAMA_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "gemini-1",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0
-    }
-    response = requests.post(GLAMA_API_URL, headers=headers, json=payload)
-    if response.status_code == 200:
-        result_text = response.json()["choices"][0]["message"]["content"]
-        try:
-            data = json.loads(result_text)
-        except:
-            data = {}
-        data["Candidate_ID"] = candidate_id
-        return data
-    else:
-        st.error(f"Glama API error: {response.status_code} {response.text}")
-        return {}
+    response = client.chat.completions.create(
+        model="gemini-1",  # or "openai/gpt-4o"
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0
+    )
+
+    result_text = response.choices[0].message.content
+    try:
+        data = json.loads(result_text)
+    except:
+        data = {}
+    data["Candidate_ID"] = candidate_id
+    return data
 
 # --- Calculate total experience ---
 def calculate_experience(experience_list):
@@ -80,25 +77,25 @@ def calculate_experience(experience_list):
 
 # --- Streamlit UI ---
 st.set_page_config(page_title="CV Parser with Glama", page_icon="📄", layout="wide")
-st.title("📄 CV Parser using Glama API")
+st.title("📄 CV Parser using Glama AI")
 
 upload_option = st.radio("Choose input type:", ["PDF Upload", "CSV Upload"])
-candidate_id = 1001  # starting ID
+candidate_id = 1001
 
+# --- PDF Upload ---
 if upload_option == "PDF Upload":
     uploaded_file = st.file_uploader("Upload CV (PDF only)", type=["pdf"])
     if uploaded_file is not None:
         text = extract_text_from_pdf(uploaded_file)
         row = extract_cv_with_glama(text, candidate_id)
-        
+
         exp_list = row.get("Experience History", [])
         experience_str, experience_lines = calculate_experience(exp_list)
         row["Experience"] = experience_str
 
-        # --- Candidate Info Card ---
+        # --- Candidate Info Cards ---
         st.subheader("✅ Parsed CV (Profile Summary)")
         col1, col2 = st.columns(2)
-
         with col1:
             st.markdown(f"""
             <div style="background-color:#ADD8E6; color:#000; padding:20px; border-radius:12px;
@@ -108,7 +105,6 @@ if upload_option == "PDF Upload":
                 <p><b>📘 Course:</b> {row.get('Degree/Course', '-')}</p>
             </div>
             """, unsafe_allow_html=True)
-
         with col2:
             st.markdown(f"""
             <div style="background-color:#ADD8E6; color:#000; padding:20px; border-radius:12px;
@@ -130,7 +126,7 @@ if upload_option == "PDF Upload":
             ])
             st.markdown(skill_html, unsafe_allow_html=True)
 
-        # --- Detailed Experiences ---
+        # --- Detailed Experience ---
         if experience_lines:
             with st.expander("📂 Detailed Experience History"):
                 for exp in experience_lines:
@@ -142,7 +138,6 @@ if upload_option == "PDF Upload":
         csv = df.to_csv(index=False).encode("utf-8")
         excel_file = "cv_extracted.xlsx"
         df.to_excel(excel_file, index=False)
-
         st.download_button("⬇️ Download CSV", data=csv, file_name="cv_extracted.csv", mime="text/csv")
         with open(excel_file, "rb") as f:
             st.download_button("⬇️ Download Excel", data=f, file_name="cv_extracted.xlsx",
@@ -150,6 +145,7 @@ if upload_option == "PDF Upload":
         if os.path.exists(excel_file):
             os.remove(excel_file)
 
+# --- CSV Upload ---
 elif upload_option == "CSV Upload":
     uploaded_csv = st.file_uploader("Upload CSV file with CV Text column", type=["csv"])
     if uploaded_csv is not None:
@@ -164,14 +160,13 @@ elif upload_option == "CSV Upload":
                 experience_str, _ = calculate_experience(exp_list)
                 row_parsed["Experience"] = experience_str
                 parsed_rows.append(row_parsed)
-            
+
             df_output = pd.DataFrame(parsed_rows)
             st.dataframe(df_output)
 
             csv = df_output.to_csv(index=False).encode("utf-8")
             excel_file = "cv_extracted_batch.xlsx"
             df_output.to_excel(excel_file, index=False)
-
             st.download_button("⬇️ Download CSV", data=csv, file_name="cv_extracted_batch.csv", mime="text/csv")
             with open(excel_file, "rb") as f:
                 st.download_button("⬇️ Download Excel", data=f, file_name="cv_extracted_batch.xlsx",
