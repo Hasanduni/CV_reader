@@ -17,6 +17,15 @@ def extract_text_from_pdf(uploaded_file):
 def parse_cv(text):
     # --- Universities + Degrees ---
     uni_patterns = re.findall(r"([A-Za-z ]+(University|Institute)[^\n]+)", text)
+    
+    # --- Degrees / Courses ---
+    degrees = re.findall(r"(Bachelor|Master|PhD|Diploma|BSc|MSc|MBA|BE|ME|BS|MS)[^,\n]*", text)
+
+    # --- Previous Internship ---
+    internships = re.findall(r"(Internship at [A-Za-z ]+|Intern at [A-Za-z ]+)", text)
+
+    # --- Current Role ---
+    current_roles = re.findall(r"(Software Engineer|Data Scientist|ML Engineer|Research Assistant|Analyst|Developer)[^,\n]*", text)
 
     # --- Experience lines with roles + dates ---
     exp_patterns = re.findall(
@@ -44,9 +53,11 @@ def parse_cv(text):
 
     total_exp_years = round(total_exp_years, 1)
 
-    # --- Prepare parsed data ---
     parsed_data = {
         "Universities": [u[0] for u in uni_patterns],
+        "Degrees": degrees,
+        "Previous_Internship": internships,
+        "Current_Role": current_roles,
         "Experiences": [e[0] for e in exp_patterns],
         "Skills": list(set(skills + tools)),
         "Total_Experience_Years": total_exp_years
@@ -55,8 +66,8 @@ def parse_cv(text):
     return parsed_data
 
 # --- Streamlit UI ---
-st.title("📄 CV Parser → Readable Vertical Format")
-st.write("Upload a CV (PDF) → extract structured info → display top-to-bottom, compute experience automatically")
+st.title("📄 CV Parser → Vertical Layout with All Fields")
+st.write("Upload a CV (PDF) → extract structured info → display top-to-bottom")
 
 uploaded_file = st.file_uploader("Upload CV (PDF only)", type=["pdf"])
 
@@ -64,16 +75,29 @@ if uploaded_file is not None:
     text = extract_text_from_pdf(uploaded_file)
     parsed_data = parse_cv(text)
 
-    st.subheader("✅ Extracted CV Information (Vertical Layout)")
-
     # --- Display vertically ---
     if parsed_data["Universities"]:
         st.markdown("**🎓 Universities / Degrees**")
         for u in parsed_data["Universities"]:
             st.write(u)
+    
+    if parsed_data["Degrees"]:
+        st.markdown("**📚 Degrees / Courses**")
+        for d in parsed_data["Degrees"]:
+            st.write(d)
+    
+    if parsed_data["Previous_Internship"]:
+        st.markdown("**💼 Previous Internship(s)**")
+        for i in parsed_data["Previous_Internship"]:
+            st.write(i)
+
+    if parsed_data["Current_Role"]:
+        st.markdown("**🏷️ Current Role(s)**")
+        for r in parsed_data["Current_Role"]:
+            st.write(r)
 
     if parsed_data["Experiences"]:
-        st.markdown("**💼 Experience**")
+        st.markdown("**💼 Experience Details**")
         for e in parsed_data["Experiences"]:
             st.write(e)
 
