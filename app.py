@@ -9,7 +9,7 @@ import json
 from openai import OpenAI
 
 # Initialize client with API key
-client = OpenAI(api_key="AIzaSyABcgB6_ekXpU1FffEt9ANh2fLEMWRbLu8")  # Replace with your key
+client = OpenAI(api_key="AIzaSyC4gFy7NsG5nbkFUDl7Dxt2IV-2f0X1RK8")  # Replace with your key
 
 # --- Extract text from PDF ---
 def extract_text_from_pdf(uploaded_file):
