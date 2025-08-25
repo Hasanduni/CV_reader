@@ -3,6 +3,8 @@ import re
 from PyPDF2 import PdfReader
 from dateutil import parser
 from datetime import datetime
+import pandas as pd
+import os
 
 # --- Extract text from PDF ---
 def extract_text_from_pdf(uploaded_file):
@@ -14,7 +16,7 @@ def extract_text_from_pdf(uploaded_file):
     return text
 
 # --- Parse CV text ---
-def parse_cv(text):
+def parse_cv(text, candidate_id=9999):
     # --- Universities + Degrees ---
     uni_patterns = re.findall(r"([A-Za-z ]+(University|Institute)[^\n]+)", text)
     
@@ -53,56 +55,56 @@ def parse_cv(text):
 
     total_exp_years = round(total_exp_years, 1)
 
-    parsed_data = {
-        "Universities": [u[0] for u in uni_patterns],
-        "Degrees": degrees,
-        "Previous_Internship": internships,
-        "Current_Role": current_roles,
-        "Experiences": [e[0] for e in exp_patterns],
-        "Skills": list(set(skills + tools)),
-        "Total_Experience_Years": total_exp_years
+    # --- Prepare aligned dataset row ---
+    row = {
+        "Candidate_ID": candidate_id,
+        "University": "; ".join([u[0] for u in uni_patterns]) if uni_patterns else "-",
+        "Course": degrees[0] if degrees else "-",
+        "Language_Proficiency": "English",
+        "Previous_Internship": internships[0] if internships else "None",
+        "Experience_Years": total_exp_years,
+        "Skills": ", ".join(list(set(skills + tools))) if (skills or tools) else "-",
+        "Current_Role": current_roles[0] if current_roles else "-",
+        "Target_Role": "-"  # can be filled later by recommender
     }
 
-    return parsed_data
+    # --- Prepare readable vertical text ---
+    vertical_text = f"""
+Candidate_ID: {row['Candidate_ID']}
+University: {row['University']}
+Course: {row['Course']}
+Language_Proficiency: {row['Language_Proficiency']}
+Previous_Internship: {row['Previous_Internship']}
+Experience_Years: {row['Experience_Years']}
+Skills: {row['Skills']}
+Current_Role: {row['Current_Role']}
+Target_Role: {row['Target_Role']}
+"""
+
+    return row, vertical_text
 
 # --- Streamlit UI ---
-st.title("📄 CV Parser → Vertical Layout with All Fields")
-st.write("Upload a CV (PDF) → extract structured info → display top-to-bottom")
+st.title("📄 CV Parser → Vertical Readable Format")
+st.write("Upload a CV (PDF) → extract info → display top-to-bottom → calculate experience automatically")
 
 uploaded_file = st.file_uploader("Upload CV (PDF only)", type=["pdf"])
 
 if uploaded_file is not None:
     text = extract_text_from_pdf(uploaded_file)
-    parsed_data = parse_cv(text)
+    row, vertical_text = parse_cv(text)
 
-    # --- Display vertically ---
-    if parsed_data["Universities"]:
-        st.markdown("**🎓 Universities / Degrees**")
-        for u in parsed_data["Universities"]:
-            st.write(u)
-    
-    if parsed_data["Degrees"]:
-        st.markdown("**📚 Degrees / Courses**")
-        for d in parsed_data["Degrees"]:
-            st.write(d)
-    
-    if parsed_data["Previous_Internship"]:
-        st.markdown("**💼 Previous Internship(s)**")
-        for i in parsed_data["Previous_Internship"]:
-            st.write(i)
+    st.subheader("✅ Parsed CV (Readable Vertical Layout)")
+    st.text(vertical_text)
 
-    if parsed_data["Current_Role"]:
-        st.markdown("**🏷️ Current Role(s)**")
-        for r in parsed_data["Current_Role"]:
-            st.write(r)
+    # --- Download aligned CSV/Excel ---
+    df = pd.DataFrame([row])
+    csv = df.to_csv(index=False).encode("utf-8")
+    excel_file = "cv_aligned.xlsx"
+    df.to_excel(excel_file, index=False)
 
-    if parsed_data["Experiences"]:
-        st.markdown("**💼 Experience Details**")
-        for e in parsed_data["Experiences"]:
-            st.write(e)
-
-    if parsed_data["Skills"]:
-        st.markdown("**🛠️ Skills & Tools**")
-        st.write(", ".join(parsed_data["Skills"]))
-
-    st.markdown(f"**📊 Total Experience (Years):** {parsed_data['Total_Experience_Years']}")
+    st.download_button("📥 Download CSV (aligned row)", data=csv, file_name="cv_aligned.csv", mime="text/csv")
+    with open(excel_file, "rb") as f:
+        st.download_button("📥 Download Excel (aligned row)", data=f, file_name="cv_aligned.xlsx",
+                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    if os.path.exists(excel_file):
+        os.remove(excel_file)
