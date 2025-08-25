@@ -22,10 +22,10 @@ def parse_cv(text, candidate_id=9999):
     uni_patterns = re.findall(r"([A-Za-z ]+(University|Institute)[^\n]+)", text)
     
     # Degrees/Courses
-    degrees = re.findall(r"(Bachelor|Diploma|BSc|Undergraduate)[^,\n]*", text)
+    degrees = re.findall(r"(Bachelor|Diploma|BSc|Data Science Undergraduate)[^,\n]*", text)
     
     # Internships
-    internships = re.findall(r"(Internship at [A-Za-z ]+|Intern at [A-Za-z ]+|Data Science Intern)", text)
+    internships = re.findall(r"(Internship at [A-Za-z ]+|Intern at [A-Za-z ]+|Data Science and Machine Learning Intern)", text)
     
     # Current roles
     current_roles = re.findall(r"(Software Engineer|Data Scientist|ML Engineer|Research Assistant|Analyst|Developer)[^,\n]*", text)
