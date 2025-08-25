@@ -1,8 +1,8 @@
 import streamlit as st
-import pandas as pd
 import re
 import os
 from PyPDF2 import PdfReader
+import pandas as pd
 
 # --- Function to extract text from uploaded PDF ---
 def extract_text_from_pdf(uploaded_file):
@@ -15,53 +15,72 @@ def extract_text_from_pdf(uploaded_file):
 
 # --- Function to parse CV text ---
 def parse_cv(text, candidate_id=9999):
-    # Extract using regex
-    universities = re.findall(r"(University of [A-Za-z ]+|[A-Za-z ]+ University)", text)
-    degrees = re.findall(r"(Bachelor|Master|PhD|Diploma|BSc|MSc|MBA|BE|ME|BS|MS)[^,\n]*", text)
-    skills = re.findall(r"(Python|Java|C\+\+|SQL|Machine Learning|Data Science|Deep Learning|Statistics|R|Tableau|PowerBI)", text, re.IGNORECASE)
-    tools = re.findall(r"(TensorFlow|PyTorch|Scikit-learn|Pandas|NumPy|Excel|Git|Docker|Kubernetes|Hadoop|Spark)", text, re.IGNORECASE)
-    internships = re.findall(r"(Internship at [A-Za-z ]+|Intern at [A-Za-z ]+)", text)
-    experience_years = re.findall(r"(\d+)\+?\s+years", text)
-    current_roles = re.findall(r"(Software Engineer|Data Scientist|ML Engineer|Research Assistant|Analyst|Developer)[^,\n]*", text)
+    # Universities + inline degrees
+    uni_patterns = re.findall(
+        r"([A-Za-z ]+(University|Institute)[^\n]+)", text
+    )
 
-    # --- Map to dataset schema ---
-    university = universities[0] if universities else "-"
-    course = degrees[0] if degrees else "-"
-    language = "English"   # default, improve if multilingual detection needed
-    internship = internships[0] if internships else "None"
-    exp_years = float(experience_years[0]) if experience_years else 0.0
-    skills_combined = ", ".join(set(skills + tools)) if (skills or tools) else "-"
-    current_role = current_roles[0] if current_roles else "-"
-    target_role = "-"  # placeholder, model can predict later
+    # Experience lines with roles + dates
+    exp_patterns = re.findall(
+        r"([A-Za-z ]*(Intern|Engineer|Scientist|Analyst)[^\n]*\d{4} ?[–-] ?(Present|\d{4}))", text
+    )
 
-    # Create structured row
-    row = {
+    # Skills and tools (simple list, extendable)
+    skills = re.findall(r"(Python|Java|SQL|Machine Learning|Deep Learning|Data Science|R|C\+\+)", text, re.IGNORECASE)
+    tools = re.findall(r"(TensorFlow|PyTorch|Pandas|NumPy|Excel|Git|Docker|Spark)", text, re.IGNORECASE)
+
+    # Years of experience
+    exp_years = re.findall(r"(\d+)\+?\s+years", text)
+    exp_years = float(exp_years[0]) if exp_years else 0.0
+
+    # Combine results
+    parsed_data = {
         "Candidate_ID": candidate_id,
-        "University": university,
-        "Course": course,
-        "Language_Proficiency": language,
-        "Previous_Internship": internship,
-        "Experience_Years": exp_years,
-        "Skills": skills_combined,
-        "Current_Role": current_role,
-        "Target_Role": target_role
+        "Universities": [u[0] for u in uni_patterns],
+        "Experiences": [e[0] for e in exp_patterns],
+        "Skills": list(set(skills + tools)),
+        "Experience_Years": exp_years
     }
-
-    return row
+    return parsed_data
 
 # --- Streamlit UI ---
 st.title("📄 CV Parser → Job Dataset Aligner")
-st.write("Upload a CV (PDF) → extract info → align with job recommendation dataset schema → download as CSV/Excel")
+st.write("Upload a CV (PDF) → extract structured info → download as CSV/Excel (for dataset building)")
 
 uploaded_file = st.file_uploader("Upload CV (PDF only)", type=["pdf"])
 
 if uploaded_file is not None:
     text = extract_text_from_pdf(uploaded_file)
-    parsed_row = parse_cv(text)
+    parsed_data = parse_cv(text)
 
-    st.subheader("📊 Parsed CV → Dataset Row")
-    df = pd.DataFrame([parsed_row])
-    st.table(df)
+    st.subheader("✅ Extracted CV Information")
+
+    # Display as text instead of table
+    if parsed_data["Universities"]:
+        st.markdown("**🎓 Universities / Degrees**")
+        for u in parsed_data["Universities"]:
+            st.write("- " + u)
+
+    if parsed_data["Experiences"]:
+        st.markdown("**💼 Experience**")
+        for e in parsed_data["Experiences"]:
+            st.write("- " + e)
+
+    if parsed_data["Skills"]:
+        st.markdown("**🛠️ Skills & Tools**")
+        st.write(", ".join(parsed_data["Skills"]))
+
+    st.markdown(f"**📊 Total Experience (Years):** {parsed_data['Experience_Years']}")
+
+    # Save structured row for dataset
+    row = {
+        "Candidate_ID": parsed_data["Candidate_ID"],
+        "Universities": "; ".join(parsed_data["Universities"]),
+        "Experiences": "; ".join(parsed_data["Experiences"]),
+        "Skills": ", ".join(parsed_data["Skills"]),
+        "Experience_Years": parsed_data["Experience_Years"]
+    }
+    df = pd.DataFrame([row])
 
     # --- Download options ---
     csv = df.to_csv(index=False).encode("utf-8")
@@ -83,6 +102,5 @@ if uploaded_file is not None:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
-    # Clean up
     if os.path.exists(excel_file):
         os.remove(excel_file)
