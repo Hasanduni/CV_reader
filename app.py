@@ -38,8 +38,8 @@ def extract_cv_with_glama(text, candidate_id=9999):
     CV Text:
     {text}
     """
-    response = client.chat.completions.create(
-        model="gemini-1",  # or "openai/gpt-4o"
+     response = client.chat.completions.create(
+        model="openai/gpt-4o",  # use a Glama-supported model
         messages=[{"role": "user", "content": prompt}],
         temperature=0
     )
