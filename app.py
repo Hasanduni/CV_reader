@@ -25,16 +25,16 @@ def parse_cv(text, candidate_id=9999):
     # Internships
     internships = re.findall(r"(Internship at [A-Za-z ]+|Intern at [A-Za-z ]+| Data Science and Machine Learning Intern)", text)
     # Current roles
-    current_roles = re.findall(r"(Software Engineer|Data Scientist|ML Engineer|Research Assistant|Analyst|Developer)[^,\n]*", text)
+    current_roles = re.findall(r"(Software Engineer|Data Scientist|Data Science and Machine Learning Intern|Research Assistant|Analyst|Developer)[^,\n]*", text)
     
-    # Experience patterns
-    exp_patterns = re.findall(
-        r"([A-Za-z &]*(?:Intern|Engineer|Scientist|Analyst)[^\n]*(?:\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|"
-        r"May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)?\s?\d{4})"
-        r"\s?[–-]\s?(Present|\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|"
-        r"May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)?\s?\d{4}))",
-        text
-    )
+   exp_patterns = re.findall(
+    r"([A-Za-z &]*(?:Intern|Engineer|Scientist|Analyst)[^\n]*?)"  # Role/position
+    r"\s*[\-–]\s*"  # Dash separator (hyphen or en-dash)
+    r"(Present|\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|"
+    r"May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s?\d{4}|\d{4})",
+    text
+)
+
 
     # Skills and Tools
     skills = re.findall(r"(Python|Java|SQL|Machine Learning|Deep Learning|Data Science|R|C\+\+)", text, re.IGNORECASE)
