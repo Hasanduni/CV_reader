@@ -80,8 +80,8 @@ def parse_cv(text, candidate_id=9999):
 
 # --- Streamlit UI ---
 st.set_page_config(page_title="CV Parser", page_icon="📄", layout="wide")
-st.title("📄 CV Parser → Structured Layout")
-st.write("Upload a CV (PDF) → Extract structured information with a modern UI")
+st.title("📄 CV Parser ")
+st.write("Upload a CV (PDF) ")
 
 uploaded_file = st.file_uploader("Upload CV (PDF only)", type=["pdf"])
 
