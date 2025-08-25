@@ -71,28 +71,37 @@ if uploaded_file is not None:
     text = extract_text_from_pdf(uploaded_file)
     row, experience_lines = parse_cv(text)
 
-    # --- Modern Card Layout ---
-    st.subheader("✅ Candidate Information")
-    col1, col2 = st.columns(2)
+    # --- Candidate Info Card instead of dataframe ---
+st.subheader("✅ Parsed CV (Profile Summary)")
 
-    with col1:
-        st.markdown(f"**🎓 University:** {row['University']}")
-        st.markdown(f"**📘 Course:** {row['Course']}")
-        st.markdown(f"**🌐 Languages:** {row['Language_Proficiency']}")
+st.markdown(
+    f"""
+    <div style="
+        background-color:#1e1e1e;
+        padding:20px;
+        border-radius:12px;
+        box-shadow:0 4px 10px rgba(0,0,0,0.3);
+        color:#fff;
+    ">
+        <h3 style="margin-top:0;">👤 Candidate #{row['Candidate_ID']}</h3>
+        <p><b>🎓 University:</b> {row['University']}</p>
+        <p><b>📘 Course:</b> {row['Course']}</p>
+        <p><b>🌐 Language Proficiency:</b> {row['Language_Proficiency']}</p>
+        <p><b>💼 Current Role:</b> {row['Current_Role']}</p>
+        <p><b>👨‍🎓 Previous Internships:</b> {row['Previous_Internship']}</p>
+        <p><b>⏳ Experience:</b> {row['Experience_Years']} years</p>
+        <p><b>🛠 Skills & Tools:</b> {row['Skills']}</p>
+        <p><b>🎯 Target Role:</b> {row['Target_Role']}</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
-    with col2:
-        st.markdown(f"**💼 Current Role:** {row['Current_Role']}")
-        st.markdown(f"**⏳ Experience (Years):** {row['Experience_Years']}")
-        st.markdown(f"**🛠 Skills & Tools:** {row['Skills']}")
-
-    st.markdown(f"**👨‍🎓 Previous Internship(s):** {row['Previous_Internship']}")
-    st.markdown(f"**🎯 Target Role:** {row['Target_Role']}")
-
-    # --- Expandable for detailed experience ---
-    if experience_lines:
-        with st.expander("📂 Detailed Experiences"):
-            for exp in experience_lines:
-                st.markdown(f"- {exp}")
+# --- Detailed Experiences ---
+if experience_lines:
+    with st.expander("📂 Detailed Experience History"):
+        for exp in experience_lines:
+            st.markdown(f"- {exp}")
 
     # --- Download Section ---
     st.subheader("📥 Download Extracted Data")
