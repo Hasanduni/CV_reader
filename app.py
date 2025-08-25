@@ -16,71 +16,60 @@ def extract_text_from_pdf(uploaded_file):
             text += page.extract_text() + "\n"
     return text
 
-# --- Parse CV text ---
 def parse_cv(text, candidate_id=9999):
     # Universities
-    uni_patterns = re.findall(r"([A-Za-z ]+(University|Institute)[^\n]+)", text)
-    
-    # Degrees/Courses
-    degrees = re.findall(r"(Bachelor|Diploma|BSc|Data Science Undergraduate)[^,\n]*", text)
-    
-    # Internships
-    internships = re.findall(r"(Internship at [A-Za-z ]+|Intern at [A-Za-z ]+|Data Science and Machine Learning Intern)", text)
-    
-    # Current roles
-    current_roles = re.findall(r"(Software Engineer|Data Scientist|ML Engineer|Research Assistant|Analyst|Developer)[^,\n]*", text)
-    
-    # --- Experience patterns ---
-    exp_patterns = re.findall(
-    r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|"
-    r"Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|\d{4})\s?\d{4}\s*[–-]\s*(?:Present|"
-    r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|"
-    r"Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|\d{4})\s?\d{4})",
-    text
-)
+    uni_patterns = re.findall(r"(University of [A-Za-z ]+|Institute of [A-Za-z ]+)", text)
 
+    # Degrees/Courses (support B.Sc., BSc, Bachelor, Diploma, Undergraduate)
+    degrees = re.findall(r"(B\.?Sc\.?|Bachelor|Diploma|Undergraduate)[^\n,]*", text)
+
+    # Internships
+    internships = re.findall(r"(Internship at [A-Za-z ]+|Intern at [A-Za-z ]+|[A-Za-z ]+ Intern)", text)
+
+    # Current roles
+    current_roles = re.findall(r"(Software Engineer|Data Scientist|ML Engineer|Research Assistant|Analyst|Developer|Data Analyst)[^,\n]*", text)
+
+    # --- Experience patterns (fixed) ---
+    exp_patterns = re.findall(
+        r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|"
+        r"Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s?\d{4}\s*[–-]\s*(?:Present|"
+        r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|"
+        r"Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s?\d{4})",
+        text
+    )
 
     # Skills and Tools
-    skills = re.findall(r"(Python|Java|SQL|Machine Learning|Deep Learning|Data Science|R|C\+\+)", text, re.IGNORECASE)
-    tools = re.findall(r"(TensorFlow|PyTorch|Pandas|NumPy|Excel|Git|Docker|Spark|scikit-learn)", text, re.IGNORECASE)
-    
+    skills = re.findall(r"(Python|Java|SQL|HTML|CSS|JavaScript|Machine Learning|Deep Learning|Data Science|R|C\+\+)", text, re.IGNORECASE)
+    tools = re.findall(r"(TensorFlow|PyTorch|Pandas|NumPy|Excel|Git|Docker|Spark|scikit-learn|Eclipse|NetBeans|MySQL)", text, re.IGNORECASE)
+
     # --- Calculate total experience in months ---
     total_exp_months = 0
-    experience_lines = []
-
     for exp_line in exp_patterns:
-        line = exp_line[0].strip()
-        experience_lines.append(line)
-        dates = re.findall(r"(\w+ \d{4}|\d{4}|Present)", line)
-        if len(dates) >= 1:
-            start = dates[0]
-            end = dates[1] if len(dates) > 1 else "Present"
-            try:
-                start_date = parser.parse(start)
-            except:
-                continue
+        try:
+            start, end = re.findall(r"(\w+ \d{4}|Present)", exp_line)
+            start_date = parser.parse(start)
             end_date = datetime.today() if end.lower() == "present" else parser.parse(end)
             diff = relativedelta(end_date, start_date)
             total_exp_months += diff.years * 12 + diff.months
+        except:
+            continue
 
-    # Convert months to "X years Y months"
     years = total_exp_months // 12
     months = total_exp_months % 12
     experience_str = f"{int(years)} years {int(months)} months"
 
+    # Final row
     row = {
         "Candidate_ID": candidate_id,
-        "University": "; ".join([u[0] for u in uni_patterns]) if uni_patterns else "-",
+        "University": "; ".join(list(set(uni_patterns))) if uni_patterns else "-",
         "Course": "; ".join(degrees) if degrees else "-",
         "Language_Proficiency": "English",
         "Previous_Internship": "; ".join(internships) if internships else "None",
         "Experience": experience_str,
         "Skills": ", ".join(list(set(skills + tools))) if (skills or tools) else "-",
         "Current_Role": "; ".join(current_roles) if current_roles else "-",
-        
     }
-
-    return row, experience_lines
+    return row
 
 # --- Streamlit UI ---
 st.set_page_config(page_title="CV Parser", page_icon="📄", layout="wide")
