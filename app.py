@@ -102,7 +102,7 @@ if uploaded_file is not None:
             f"""
             <div style="background-color:#ADD8E6; color:#000; padding:20px; border-radius:12px;
                 box-shadow:0 4px 12px rgba(0,0,0,0.1);">
-                <h3 style="margin-top:0;color:#2c3e50;">👤 Candidate #{row['Candidate_ID']}</h3>
+                <h3 style="margin-top:0;color:#2c3e50;">👤 Candidate </h3>
                 <p><b>🎓 University:</b> {row['University']}</p>
                 <p><b>📘 Course:</b> {row['Course']}</p>
                 <p><b>🌐 Language:</b> {row['Language_Proficiency']}</p>
