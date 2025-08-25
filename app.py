@@ -24,22 +24,29 @@ def extract_text_from_pdf(uploaded_file):
             text += page.extract_text() + "\n"
     return text
 
-# --- Glama CV parsing ---
 def extract_cv_with_glama(text, candidate_id=9999):
     prompt = f"""
     Extract the following fields from the CV text below in JSON format:
-    - University
-    - Degree/Course
-    - Previous Internships
+
+    - Full Name
     - Current Role
-    - Skills & Tools
-    - Experience History: list each experience with role, company, start_date, end_date
+    - Contact Information:
+        - Phone
+        - Email
+        - LinkedIn
+        - GitHub
+    - About Me
+    - Education: list each with institution, degree/course, years
+    - Experience: list each with role, company, start_date, end_date, key_projects
+    - Technical Skills: list languages, tools, frameworks, databases, cloud, version control
+    - Projects: list project name, technologies, description
+    - Certifications & Achievements
+    - References: list name, role, contact info
 
     CV Text:
     {text}
     """
 
-    # Call Glama AI via OpenAI-compatible client
     response = client.chat.completions.create(
         model="openai/gpt-4o",  # Glama-supported model
         messages=[{"role": "user", "content": prompt}],
@@ -50,7 +57,8 @@ def extract_cv_with_glama(text, candidate_id=9999):
     try:
         data = json.loads(result_text)
     except:
-        data = {}
+        data = {"error": "Could not parse JSON", "raw_text": result_text}
+
     data["Candidate_ID"] = candidate_id
     return data
 
