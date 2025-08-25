@@ -17,28 +17,18 @@ def extract_text_from_pdf(uploaded_file):
 
 # --- Parse CV text ---
 def parse_cv(text, candidate_id=9999):
-    # --- Universities + Degrees ---
     uni_patterns = re.findall(r"([A-Za-z ]+(University|Institute)[^\n]+)", text)
-    
-    # --- Degrees / Courses ---
     degrees = re.findall(r"(Bachelor|Master|PhD|Diploma|BSc|MSc|MBA|BE|ME|BS|MS)[^,\n]*", text)
-
-    # --- Previous Internships ---
     internships = re.findall(r"(Internship at [A-Za-z ]+|Intern at [A-Za-z ]+)", text)
-
-    # --- Current Roles ---
     current_roles = re.findall(r"(Software Engineer|Data Scientist|ML Engineer|Research Assistant|Analyst|Developer)[^,\n]*", text)
 
-    # --- Experience lines with roles + dates ---
     exp_patterns = re.findall(
         r"([A-Za-z &]*(Intern|Engineer|Scientist|Analyst)[^\n]*\d{4} ?[–-] ?(Present|\d{4}))", text
     )
 
-    # --- Skills & Tools ---
     skills = re.findall(r"(Python|Java|SQL|Machine Learning|Deep Learning|Data Science|R|C\+\+)", text, re.IGNORECASE)
     tools = re.findall(r"(TensorFlow|PyTorch|Pandas|NumPy|Excel|Git|Docker|Spark|scikit-learn)", text, re.IGNORECASE)
 
-    # --- Calculate total experience years from all experience lines ---
     total_exp_years = 0
     experience_lines = []
     for exp_line in exp_patterns:
@@ -56,7 +46,6 @@ def parse_cv(text, candidate_id=9999):
             total_exp_years += (end_date - start_date).days / 365.0
     total_exp_years = round(total_exp_years, 1)
 
-    # --- Prepare aligned dataset row ---
     row = {
         "Candidate_ID": candidate_id,
         "University": "; ".join([u[0] for u in uni_patterns]) if uni_patterns else "-",
@@ -66,49 +55,55 @@ def parse_cv(text, candidate_id=9999):
         "Experience_Years": total_exp_years,
         "Skills": ", ".join(list(set(skills + tools))) if (skills or tools) else "-",
         "Current_Role": "; ".join(current_roles) if current_roles else "-",
-        "Target_Role": "-"  # can be predicted later
+        "Target_Role": "-"
     }
 
-    # --- Prepare readable vertical text ---
-    vertical_text = f"""
-Candidate_ID: {row['Candidate_ID']}
-University: {row['University']}
-Course: {row['Course']}
-Language_Proficiency: {row['Language_Proficiency']}
-Previous_Internship: {row['Previous_Internship']}
-Experience_Years: {row['Experience_Years']}
-Current_Role: {row['Current_Role']}
-Skills: {row['Skills']}
-Target_Role: {row['Target_Role']}
-"""
-    if experience_lines:
-        vertical_text += "\n💼 Detailed Experiences:\n" + "\n".join(experience_lines)
-
-    return row, vertical_text
+    return row, experience_lines
 
 # --- Streamlit UI ---
-st.title("📄 CV Parser → Vertical Readable Format")
-st.write("Upload a CV (PDF) → extract info → display top-to-bottom → calculate experience automatically")
+st.set_page_config(page_title="CV Parser", page_icon="📄", layout="wide")
+st.title("📄 CV Parser → Structured Layout")
+st.write("Upload a CV (PDF) → Extract structured information with a modern UI")
 
 uploaded_file = st.file_uploader("Upload CV (PDF only)", type=["pdf"])
 
 if uploaded_file is not None:
     text = extract_text_from_pdf(uploaded_file)
-    row, vertical_text = parse_cv(text)
+    row, experience_lines = parse_cv(text)
 
-    # ✅ Display vertical readable text only (no table)
-    st.subheader("✅ Parsed CV (Readable Vertical Layout)")
-    st.text(vertical_text)
+    # --- Modern Card Layout ---
+    st.subheader("✅ Candidate Information")
+    col1, col2 = st.columns(2)
 
-    # --- Download aligned CSV/Excel ---
+    with col1:
+        st.markdown(f"**🎓 University:** {row['University']}")
+        st.markdown(f"**📘 Course:** {row['Course']}")
+        st.markdown(f"**🌐 Languages:** {row['Language_Proficiency']}")
+
+    with col2:
+        st.markdown(f"**💼 Current Role:** {row['Current_Role']}")
+        st.markdown(f"**⏳ Experience (Years):** {row['Experience_Years']}")
+        st.markdown(f"**🛠 Skills & Tools:** {row['Skills']}")
+
+    st.markdown(f"**👨‍🎓 Previous Internship(s):** {row['Previous_Internship']}")
+    st.markdown(f"**🎯 Target Role:** {row['Target_Role']}")
+
+    # --- Expandable for detailed experience ---
+    if experience_lines:
+        with st.expander("📂 Detailed Experiences"):
+            for exp in experience_lines:
+                st.markdown(f"- {exp}")
+
+    # --- Download Section ---
+    st.subheader("📥 Download Extracted Data")
     df = pd.DataFrame([row])
     csv = df.to_csv(index=False).encode("utf-8")
     excel_file = "cv_aligned.xlsx"
     df.to_excel(excel_file, index=False)
 
-    st.download_button("📥 Download CSV (aligned row)", data=csv, file_name="cv_aligned.csv", mime="text/csv")
+    st.download_button("⬇️ Download CSV", data=csv, file_name="cv_aligned.csv", mime="text/csv")
     with open(excel_file, "rb") as f:
-        st.download_button("📥 Download Excel (aligned row)", data=f, file_name="cv_aligned.xlsx",
+        st.download_button("⬇️ Download Excel", data=f, file_name="cv_aligned.xlsx",
                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     if os.path.exists(excel_file):
         os.remove(excel_file)
