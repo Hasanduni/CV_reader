@@ -71,37 +71,55 @@ if uploaded_file is not None:
     text = extract_text_from_pdf(uploaded_file)
     row, experience_lines = parse_cv(text)
 
-    # --- Candidate Info Card instead of dataframe ---
-st.subheader("✅ Parsed CV (Profile Summary)")
+    # --- Candidate Info Card ---
+    st.subheader("✅ Parsed CV (Profile Summary)")
 
-st.markdown(
-    f"""
-    <div style="
-        background-color:#1e1e1e;
-        padding:20px;
-        border-radius:12px;
-        box-shadow:0 4px 10px rgba(0,0,0,0.3);
-        color:#fff;
-    ">
-        <h3 style="margin-top:0;">👤 Candidate #{row['Candidate_ID']}</h3>
-        <p><b>🎓 University:</b> {row['University']}</p>
-        <p><b>📘 Course:</b> {row['Course']}</p>
-        <p><b>🌐 Language Proficiency:</b> {row['Language_Proficiency']}</p>
-        <p><b>💼 Current Role:</b> {row['Current_Role']}</p>
-        <p><b>👨‍🎓 Previous Internships:</b> {row['Previous_Internship']}</p>
-        <p><b>⏳ Experience:</b> {row['Experience_Years']} years</p>
-        <p><b>🛠 Skills & Tools:</b> {row['Skills']}</p>
-        <p><b>🎯 Target Role:</b> {row['Target_Role']}</p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(
+            f"""
+            <div style="background-color:#f8f9fa;padding:20px;border-radius:12px;
+                        box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+                <h3 style="margin-top:0;color:#2c3e50;">👤 Candidate #{row['Candidate_ID']}</h3>
+                <p><b>🎓 University:</b> {row['University']}</p>
+                <p><b>📘 Course:</b> {row['Course']}</p>
+                <p><b>🌐 Language:</b> {row['Language_Proficiency']}</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-# --- Detailed Experiences ---
-if experience_lines:
-    with st.expander("📂 Detailed Experience History"):
-        for exp in experience_lines:
-            st.markdown(f"- {exp}")
+    with col2:
+        st.markdown(
+            f"""
+            <div style="background-color:#f8f9fa;padding:20px;border-radius:12px;
+                        box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+                <p><b>💼 Current Role:</b> {row['Current_Role']}</p>
+                <p><b>👨‍🎓 Previous Internships:</b> {row['Previous_Internship']}</p>
+                <p><b>⏳ Experience:</b> {row['Experience_Years']} years</p>
+                <p><b>🎯 Target Role:</b> {row['Target_Role']}</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # --- Skills as Badges ---
+    if row["Skills"] != "-":
+        st.markdown("### 🛠 Skills & Tools")
+        skills_list = [s.strip() for s in row["Skills"].split(",")]
+        skill_html = " ".join(
+            [f"<span style='background:#3498db;color:white;padding:6px 10px;
+                border-radius:12px;margin:3px;display:inline-block;'>
+                {skill}</span>"
+             for skill in skills_list]
+        )
+        st.markdown(skill_html, unsafe_allow_html=True)
+
+    # --- Detailed Experiences ---
+    if experience_lines:
+        with st.expander("📂 Detailed Experience History"):
+            for exp in experience_lines:
+                st.markdown(f"- {exp}")
 
     # --- Download Section ---
     st.subheader("📥 Download Extracted Data")
