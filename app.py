@@ -109,7 +109,6 @@ if uploaded_file is not None:
             f"""
             <div style="background-color:#ADD8E6; color:#000; padding:20px; border-radius:12px;
                 box-shadow:0 4px 12px rgba(0,0,0,0.1);">
-                <p><b>💼 Current Role:</b> {row['Current_Role']}</p>
                 <p><b>👨‍🎓 Previous Internships:</b> {row['Previous_Internship']}</p>
                 <p><b>⏳ Experience:</b> {row['Experience']}</p>
                 
