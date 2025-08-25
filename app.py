@@ -32,12 +32,13 @@ def parse_cv(text, candidate_id=9999):
     
     # --- Experience patterns ---
     exp_patterns = re.findall(
-        r"([A-Za-z &]*(?:Intern|Engineer|Scientist|Analyst)[^\n]*?)"  # Role/position
-        r"\s*[\-–]\s*"  # Dash separator (hyphen or en-dash)
-        r"((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|"
-        r"Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|\d{4})\s?\d{4}|Present)",  # Start/End
-        text
-    )
+    r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|"
+    r"Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|\d{4})\s?\d{4}\s*[–-]\s*(?:Present|"
+    r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|"
+    r"Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|\d{4})\s?\d{4})",
+    text
+)
+
 
     # Skills and Tools
     skills = re.findall(r"(Python|Java|SQL|Machine Learning|Deep Learning|Data Science|R|C\+\+)", text, re.IGNORECASE)
