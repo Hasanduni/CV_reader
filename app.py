@@ -96,6 +96,7 @@ if uploaded_file is not None:
     text = extract_text_from_pdf(uploaded_file)
     row, vertical_text = parse_cv(text)
 
+    # ✅ Display vertical readable text only (no table)
     st.subheader("✅ Parsed CV (Readable Vertical Layout)")
     st.text(vertical_text)
 
