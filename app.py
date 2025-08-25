@@ -127,12 +127,7 @@ if uploaded_file is not None:
         ])
         st.markdown(skill_html, unsafe_allow_html=True)
 
-    # --- Detailed Experiences ---
-    if experience_lines:
-        with st.expander("📂 Detailed Experience History"):
-            for exp in experience_lines:
-                st.markdown(f"- {exp}")
-
+    # --- Detailed Experiences --
     # --- Download Section ---
     st.subheader("📥 Download Extracted Data")
     df = pd.DataFrame([row])
