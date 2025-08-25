@@ -5,11 +5,12 @@ import pandas as pd
 import os
 import json
 
-# === Import Gemini/OpenAI client ===
+# === Import OpenAI-compatible client ===
 from openai import OpenAI
 
-# Initialize client with API key
-client = OpenAI(api_key="AIzaSyABcgB6_ekXpU1FffEt9ANh2fLEMWRbLu8")  # Replace with your key
+# Initialize client with your Glama AI key
+GLAMA_API_KEY = "glama_eyJhcGlLZXkiOiIxNWVmYzFmNS03ZDFhLTQyMGItODAwYy1iZjQ1ZDhhMzljNDkifQ"
+client = OpenAI(api_key=GLAMA_API_KEY)
 
 # --- Extract text from PDF ---
 def extract_text_from_pdf(uploaded_file):
@@ -20,7 +21,7 @@ def extract_text_from_pdf(uploaded_file):
             text += page.extract_text() + "\n"
     return text
 
-# --- Gemini-based CV parsing ---
+# --- Gemini/Glama-based CV parsing ---
 def extract_cv_with_gemini(text, candidate_id=9999):
     prompt = f"""
     Extract the following fields from the CV text below in JSON format:
@@ -34,19 +35,16 @@ def extract_cv_with_gemini(text, candidate_id=9999):
     CV Text:
     {text}
     """
-
     response = client.chat.completions.create(
         model="gemini-1",
         messages=[{"role": "user", "content": prompt}],
         temperature=0
     )
-
     result_text = response.choices[0].message.content
     try:
         data = json.loads(result_text)
     except:
         data = {}
-    
     data["Candidate_ID"] = candidate_id
     return data
 
@@ -78,12 +76,10 @@ st.set_page_config(page_title="CV Parser with Gemini", page_icon="📄", layout=
 st.title("📄 CV Parser using Gemini API")
 
 upload_option = st.radio("Choose input type:", ["PDF Upload", "CSV Upload"])
-
 candidate_id = 1001  # starting ID
 
 if upload_option == "PDF Upload":
     uploaded_file = st.file_uploader("Upload CV (PDF only)", type=["pdf"])
-    
     if uploaded_file is not None:
         text = extract_text_from_pdf(uploaded_file)
         row = extract_cv_with_gemini(text, candidate_id)
@@ -103,7 +99,6 @@ if upload_option == "PDF Upload":
                 <h3 style="margin-top:0;color:#2c3e50;">👤 Candidate #{row.get('Candidate_ID')}</h3>
                 <p><b>🎓 University:</b> {row.get('University', '-')}</p>
                 <p><b>📘 Course:</b> {row.get('Degree/Course', '-')}</p>
-                <p><b>🌐 Language:</b> English</p>
             </div>
             """, unsafe_allow_html=True)
 
