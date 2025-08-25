@@ -105,16 +105,17 @@ if uploaded_file is not None:
         )
 
     # --- Skills as Badges ---
+    # --- Skills as Badges ---
     if row["Skills"] != "-":
         st.markdown("### 🛠 Skills & Tools")
         skills_list = [s.strip() for s in row["Skills"].split(",")]
         skill_html = " ".join([
-            f"<span style='background:#3498db;color:white;padding:6px 10px;border-radius:12px;margin:3px;display:inline-block;'>{skill}</span>"
+            f"<span style='background:#3498db;color:white;padding:6px 10px;border-radius:12px;margin:3px;display:inline-block;'>{skill}</span>" 
             for skill in skills_list
         ])
         st.markdown(skill_html, unsafe_allow_html=True)
-
-    # --- Detailed Experiences ---
+    
+        # --- Detailed Experiences ---
     if experience_lines:
         with st.expander("📂 Detailed Experience History"):
             for exp in experience_lines:
