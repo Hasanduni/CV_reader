@@ -73,7 +73,7 @@ def parse_cv(text, candidate_id=9999):
         "Experience": experience_str,
         "Skills": ", ".join(list(set(skills + tools))) if (skills or tools) else "-",
         "Current_Role": "; ".join(current_roles) if current_roles else "-",
-        "Target_Role": "-"
+        
     }
 
     return row, experience_lines
@@ -115,7 +115,7 @@ if uploaded_file is not None:
                 <p><b>💼 Current Role:</b> {row['Current_Role']}</p>
                 <p><b>👨‍🎓 Previous Internships:</b> {row['Previous_Internship']}</p>
                 <p><b>⏳ Experience:</b> {row['Experience']}</p>
-                <p><b>🎯 Target Role:</b> {row['Target_Role']}</p>
+                
             </div>
             """,
             unsafe_allow_html=True
