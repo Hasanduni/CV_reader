@@ -20,21 +20,24 @@ def parse_cv(text, candidate_id=9999):
     # Universities
     uni_patterns = re.findall(r"(University of [A-Za-z ]+|Institute of [A-Za-z ]+)", text)
 
-    # Degrees/Courses (support B.Sc., BSc, Bachelor, Diploma, Undergraduate)
+    # Degrees/Courses
     degrees = re.findall(r"(B\.?Sc\.?|Bachelor|Diploma|Undergraduate)[^\n,]*", text)
 
     # Internships
-    internships = re.findall(r"(Internship at [A-Za-z ]+|Intern at [A-Za-z ]+|[A-Za-z ]+ Intern)", text)
+    internships = re.findall(r"(?:Internship at|Intern at|[A-Za-z ]+ Intern)", text)
 
     # Current roles
-    current_roles = re.findall(r"(Software Engineer|Data Scientist|ML Engineer|Research Assistant|Analyst|Developer|Data Analyst)[^,\n]*", text)
+    current_roles = re.findall(
+        r"(Software Engineer|Data Scientist|ML Engineer|Research Assistant|Analyst|Developer|Data Analyst)",
+        text
+    )
 
-    # --- Experience patterns (fixed) ---
+    # Experience patterns
     exp_patterns = re.findall(
-        r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|"
-        r"Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s?\d{4}\s*[–-]\s*(?:Present|"
-        r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|"
-        r"Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s?\d{4})",
+        r"((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|"
+        r"Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s?\d{4}\s*[–-]\s*"
+        r"(?:Present|(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|"
+        r"Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s?\d{4}))",
         text
     )
 
@@ -69,7 +72,9 @@ def parse_cv(text, candidate_id=9999):
         "Skills": ", ".join(list(set(skills + tools))) if (skills or tools) else "-",
         "Current_Role": "; ".join(current_roles) if current_roles else "-",
     }
-    return row
+
+    return row, exp_patterns   # ✅ return both
+
 
 # --- Streamlit UI ---
 st.set_page_config(page_title="CV Parser", page_icon="📄", layout="wide")
