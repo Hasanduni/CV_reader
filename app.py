@@ -4,13 +4,11 @@ from datetime import datetime
 import pandas as pd
 import os
 import json
+import requests
 
-# === Import OpenAI-compatible client ===
-from openai import OpenAI
-
-# Initialize client with your Glama AI key
+# --- Glama AI API Key ---
 GLAMA_API_KEY = "glama_eyJhcGlLZXkiOiIxNWVmYzFmNS03ZDFhLTQyMGItODAwYy1iZjQ1ZDhhMzljNDkifQ"
-client = OpenAI(api_key=GLAMA_API_KEY)
+GLAMA_API_URL = "https://gateway.glama.ai/v1/chat/completions"
 
 # --- Extract text from PDF ---
 def extract_text_from_pdf(uploaded_file):
@@ -21,8 +19,8 @@ def extract_text_from_pdf(uploaded_file):
             text += page.extract_text() + "\n"
     return text
 
-# --- Gemini/Glama-based CV parsing ---
-def extract_cv_with_gemini(text, candidate_id=9999):
+# --- Glama CV parsing ---
+def extract_cv_with_glama(text, candidate_id=9999):
     prompt = f"""
     Extract the following fields from the CV text below in JSON format:
     - University
@@ -31,22 +29,31 @@ def extract_cv_with_gemini(text, candidate_id=9999):
     - Current Role
     - Skills & Tools
     - Experience History: list each experience with role, company, start_date, end_date
-    
+
     CV Text:
     {text}
     """
-    response = client.chat.completions.create(
-        model="gemini-1",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0
-    )
-    result_text = response.choices[0].message.content
-    try:
-        data = json.loads(result_text)
-    except:
-        data = {}
-    data["Candidate_ID"] = candidate_id
-    return data
+    headers = {
+        "Authorization": f"Bearer {GLAMA_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "gemini-1",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0
+    }
+    response = requests.post(GLAMA_API_URL, headers=headers, json=payload)
+    if response.status_code == 200:
+        result_text = response.json()["choices"][0]["message"]["content"]
+        try:
+            data = json.loads(result_text)
+        except:
+            data = {}
+        data["Candidate_ID"] = candidate_id
+        return data
+    else:
+        st.error(f"Glama API error: {response.status_code} {response.text}")
+        return {}
 
 # --- Calculate total experience ---
 def calculate_experience(experience_list):
@@ -72,8 +79,8 @@ def calculate_experience(experience_list):
     return f"{int(years)} years {int(months)} months", lines
 
 # --- Streamlit UI ---
-st.set_page_config(page_title="CV Parser with Gemini", page_icon="📄", layout="wide")
-st.title("📄 CV Parser using Gemini API")
+st.set_page_config(page_title="CV Parser with Glama", page_icon="📄", layout="wide")
+st.title("📄 CV Parser using Glama API")
 
 upload_option = st.radio("Choose input type:", ["PDF Upload", "CSV Upload"])
 candidate_id = 1001  # starting ID
@@ -82,7 +89,7 @@ if upload_option == "PDF Upload":
     uploaded_file = st.file_uploader("Upload CV (PDF only)", type=["pdf"])
     if uploaded_file is not None:
         text = extract_text_from_pdf(uploaded_file)
-        row = extract_cv_with_gemini(text, candidate_id)
+        row = extract_cv_with_glama(text, candidate_id)
         
         exp_list = row.get("Experience History", [])
         experience_str, experience_lines = calculate_experience(exp_list)
@@ -152,7 +159,7 @@ elif upload_option == "CSV Upload":
         else:
             parsed_rows = []
             for idx, row_data in df_input.iterrows():
-                row_parsed = extract_cv_with_gemini(row_data["CV Text"], candidate_id + idx)
+                row_parsed = extract_cv_with_glama(row_data["CV Text"], candidate_id + idx)
                 exp_list = row_parsed.get("Experience History", [])
                 experience_str, _ = calculate_experience(exp_list)
                 row_parsed["Experience"] = experience_str
