@@ -6,11 +6,9 @@ from dateutil.relativedelta import relativedelta
 from datetime import datetime
 import pandas as pd
 import os
-
-# === Google Sheets Libraries ===
+import json
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-
+from google.oauth2.service_account import Credentials
 
 # --- Extract text from PDF ---
 def extract_text_from_pdf(uploaded_file):
@@ -21,24 +19,15 @@ def extract_text_from_pdf(uploaded_file):
             text += page.extract_text() + "\n"
     return text
 
-
+# --- Parse CV ---
 def parse_cv(text, candidate_id=9999):
-    # Universities
     uni_patterns = re.findall(r"(University of [A-Za-z ]+|Institute of [A-Za-z ]+)", text)
-
-    # Degrees/Courses
     degrees = re.findall(
         r"(?:Degree:\s*)?(B\.?Sc\.?(?:\s*\(Hons\))?[^\n,]*|Bachelor[^\n,]*|Diploma[^\n,]*|Undergraduate[^\n,]*)",
         text,
     )
-
-    # Internships
     internships = re.findall(r"(?:Internship at|Intern at|[A-Za-z ]+ Intern)", text)
-
-    # Current roles
     current_roles = re.findall(r"(?:Current Role:\s*-?\s*)([A-Za-z ]+)", text)
-
-    # Experience patterns
     exp_patterns = re.findall(
         r"((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|"
         r"Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s?\d{4}\s*[–-]\s*"
@@ -46,8 +35,6 @@ def parse_cv(text, candidate_id=9999):
         r"Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s?\d{4}))",
         text,
     )
-
-    # Skills and Tools
     skills = re.findall(
         r"(Python|Java|SQL|HTML|CSS|JavaScript|Machine Learning|Deep Learning|Data Science|R|C\+\+)",
         text,
@@ -59,7 +46,7 @@ def parse_cv(text, candidate_id=9999):
         re.IGNORECASE,
     )
 
-    # --- Calculate total experience in months ---
+    # Calculate total experience
     total_exp_months = 0
     for exp_line in exp_patterns:
         try:
@@ -75,25 +62,23 @@ def parse_cv(text, candidate_id=9999):
     months = total_exp_months % 12
     experience_str = f"{int(years)} years {int(months)} months"
 
-    # Final row
-    row = {
-        "Candidate_ID": candidate_id,
-        "University": "; ".join(list(set(uni_patterns))) if uni_patterns else "-",
-        "Course": "; ".join(degrees) if degrees else "-",
-        "Language_Proficiency": "English",
-        "Previous_Internship": "; ".join(internships) if internships else "None",
-        "Experience": experience_str,
-        "Skills": ", ".join(list(set(skills + tools))) if (skills or tools) else "-",
-        "Current_Role": "; ".join(current_roles) if current_roles else "-",
-    }
+  row = {
+    "Candidate_ID": candidate_id,
+    "Course_University": "; ".join(degrees) + " | " + "; ".join(list(set(uni_patterns))) if (degrees or uni_patterns) else "-",
+    "Language_Proficiency": "English",
+    "Previous_Internship": "; ".join(internships) if internships else "None",
+    "Experience_Years": f"{years}.{months:02d}",  # or just years
+    "Skills": ", ".join(list(set(skills + tools))) if (skills or tools) else "-",
+    "Current_Role": "; ".join(current_roles) if current_roles else "-",
+    "Target_Role": "-",  # leave empty for now
+}
 
-    return row, exp_patterns  # ✅ return both
-
+    return row, exp_patterns
 
 # --- Streamlit UI ---
 st.set_page_config(page_title="CV Parser", page_icon="📄", layout="wide")
-st.title("📄 CV Parser ")
-st.write("Upload a CV (PDF) ")
+st.title("📄 CV Parser")
+st.write("Upload a CV (PDF)")
 
 uploaded_file = st.file_uploader("Upload CV (PDF only)", type=["pdf"])
 
@@ -101,7 +86,7 @@ if uploaded_file is not None:
     text = extract_text_from_pdf(uploaded_file)
     row, experience_lines = parse_cv(text)
 
-    # --- Candidate Info Card ---
+    # Candidate Info Card
     st.subheader("✅ Parsed CV (Profile Summary)")
     col1, col2 = st.columns(2)
 
@@ -131,21 +116,19 @@ if uploaded_file is not None:
             unsafe_allow_html=True,
         )
 
-    # --- Skills & Tools ---
+    # Skills & Tools
     if row["Skills"] != "-":
         st.markdown("### 🛠 Skills & Tools")
         skills_list = [s.strip() for s in row["Skills"].split(",")]
         skill_html = " ".join(
             [
-                "<span style='background:#3498db;color:white;padding:6px 10px;border-radius:12px;margin:3px;display:inline-block;'>{}</span>".format(
-                    skill
-                )
+                f"<span style='background:#3498db;color:white;padding:6px 10px;border-radius:12px;margin:3px;display:inline-block;'>{skill}</span>"
                 for skill in skills_list
             ]
         )
         st.markdown(skill_html, unsafe_allow_html=True)
 
-    # --- Download Section ---
+    # Download Section
     st.subheader("📥 Download Extracted Data")
     df = pd.DataFrame([row])
     csv = df.to_csv(index=False).encode("utf-8")
@@ -166,12 +149,15 @@ if uploaded_file is not None:
     # --- Save to Google Sheets ---
     st.subheader("☁ Save to Google Sheets")
 
-    # Google Sheets setup
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("gen-lang-client-0629884912-5d719ccba303.json", scope)
+    # Use Streamlit Secrets
+    key_dict = json.loads(st.secrets["GOOGLE_SHEET_KEY"])
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    creds = Credentials.from_service_account_info(key_dict, scopes=scopes)
     client = gspread.authorize(creds)
 
-    # Open your sheet by URL
     sheet = client.open_by_url(
         "https://docs.google.com/spreadsheets/d/1o7KkNumt_MSO-knsuZHNKnCq0fzCTfv-P0ArDzfvA4c/edit#gid=476317413"
     ).sheet1
