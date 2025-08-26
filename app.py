@@ -120,7 +120,8 @@ if uploaded_file is not None:
             <div style="background-color:#ADD8E6; color:#000; padding:20px; border-radius:12px;
                 box-shadow:0 4px 12px rgba(0,0,0,0.1);">
                 <p><b>👨‍🎓 Previous Internships:</b> {row['Previous_Internship']}</p>
-                <p><b>⏳ Experience:</b> {row['Experience']}</p>
+                <p><b>⏳ Experience:</b> {row['Experience_Years']}</p>
+
             </div>
             """,
             unsafe_allow_html=True,
