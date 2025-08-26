@@ -19,15 +19,23 @@ def extract_text_from_pdf(uploaded_file):
             text += page.extract_text() + "\n"
     return text
 
-# --- Parse CV ---
 def parse_cv(text, candidate_id=9999):
+    # Universities
     uni_patterns = re.findall(r"(University of [A-Za-z ]+|Institute of [A-Za-z ]+)", text)
+
+    # Degrees/Courses
     degrees = re.findall(
         r"(?:Degree:\s*)?(B\.?Sc\.?(?:\s*\(Hons\))?[^\n,]*|Bachelor[^\n,]*|Diploma[^\n,]*|Undergraduate[^\n,]*)",
         text,
     )
+
+    # Internships
     internships = re.findall(r"(?:Internship at|Intern at|[A-Za-z ]+ Intern)", text)
+
+    # Current roles
     current_roles = re.findall(r"(?:Current Role:\s*-?\s*)([A-Za-z ]+)", text)
+
+    # Experience patterns
     exp_patterns = re.findall(
         r"((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|"
         r"Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s?\d{4}\s*[–-]\s*"
@@ -35,6 +43,8 @@ def parse_cv(text, candidate_id=9999):
         r"Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s?\d{4}))",
         text,
     )
+
+    # Skills and Tools
     skills = re.findall(
         r"(Python|Java|SQL|HTML|CSS|JavaScript|Machine Learning|Deep Learning|Data Science|R|C\+\+)",
         text,
@@ -46,7 +56,7 @@ def parse_cv(text, candidate_id=9999):
         re.IGNORECASE,
     )
 
-    # Calculate total experience
+    # --- Calculate total experience in months ---
     total_exp_months = 0
     for exp_line in exp_patterns:
         try:
@@ -60,20 +70,21 @@ def parse_cv(text, candidate_id=9999):
 
     years = total_exp_months // 12
     months = total_exp_months % 12
-    experience_str = f"{int(years)} years {int(months)} months"
 
-  row = {
-    "Candidate_ID": candidate_id,
-    "Course_University": "; ".join(degrees) + " | " + "; ".join(list(set(uni_patterns))) if (degrees or uni_patterns) else "-",
-    "Language_Proficiency": "English",
-    "Previous_Internship": "; ".join(internships) if internships else "None",
-    "Experience_Years": f"{years}.{months:02d}",  # or just years
-    "Skills": ", ".join(list(set(skills + tools))) if (skills or tools) else "-",
-    "Current_Role": "; ".join(current_roles) if current_roles else "-",
-    "Target_Role": "-",  # leave empty for now
-}
+    # --- Map to your spreadsheet columns ---
+    row = {
+        "Candidate_ID": candidate_id,
+        "Course_University": "; ".join(degrees) + " | " + "; ".join(list(set(uni_patterns))) if (degrees or uni_patterns) else "-",
+        "Language_Proficiency": "English",
+        "Previous_Internship": "; ".join(internships) if internships else "None",
+        "Experience_Years": f"{years}.{months:02d}",
+        "Skills": ", ".join(list(set(skills + tools))) if (skills or tools) else "-",
+        "Current_Role": "; ".join(current_roles) if current_roles else "-",
+        "Target_Role": "-",  # empty for now
+    }
 
     return row, exp_patterns
+
 
 # --- Streamlit UI ---
 st.set_page_config(page_title="CV Parser", page_icon="📄", layout="wide")
