@@ -1,6 +1,8 @@
 streamlit
 pandas
 PyPDF2
-openpyxl
 python-dateutil
-openai
+gspread
+oauth2client
+openpyxl
+
