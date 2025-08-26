@@ -7,6 +7,11 @@ from datetime import datetime
 import pandas as pd
 import os
 
+# === Google Sheets Libraries ===
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+
 # --- Extract text from PDF ---
 def extract_text_from_pdf(uploaded_file):
     pdf_reader = PdfReader(uploaded_file)
@@ -16,33 +21,43 @@ def extract_text_from_pdf(uploaded_file):
             text += page.extract_text() + "\n"
     return text
 
+
 def parse_cv(text, candidate_id=9999):
     # Universities
     uni_patterns = re.findall(r"(University of [A-Za-z ]+|Institute of [A-Za-z ]+)", text)
 
     # Degrees/Courses
-    degrees = re.findall(r"(?:Degree:\s*)?(B\.?Sc\.?(?:\s*\(Hons\))?[^\n,]*|Bachelor[^\n,]*|Diploma[^\n,]*|Undergraduate[^\n,]*)", text)
+    degrees = re.findall(
+        r"(?:Degree:\s*)?(B\.?Sc\.?(?:\s*\(Hons\))?[^\n,]*|Bachelor[^\n,]*|Diploma[^\n,]*|Undergraduate[^\n,]*)",
+        text,
+    )
 
     # Internships
     internships = re.findall(r"(?:Internship at|Intern at|[A-Za-z ]+ Intern)", text)
 
     # Current roles
-    current_roles = re.findall(
-        r"(?:Current Role:\s*-?\s*)([A-Za-z ]+)", 
-        text
-    )
-        # Experience patterns
+    current_roles = re.findall(r"(?:Current Role:\s*-?\s*)([A-Za-z ]+)", text)
+
+    # Experience patterns
     exp_patterns = re.findall(
         r"((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|"
         r"Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s?\d{4}\s*[–-]\s*"
         r"(?:Present|(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|"
         r"Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s?\d{4}))",
-        text
+        text,
     )
 
     # Skills and Tools
-    skills = re.findall(r"(Python|Java|SQL|HTML|CSS|JavaScript|Machine Learning|Deep Learning|Data Science|R|C\+\+)", text, re.IGNORECASE)
-    tools = re.findall(r"(TensorFlow|PyTorch|Pandas|NumPy|Excel|Git|Docker|Spark|scikit-learn|Eclipse|NetBeans|MySQL)", text, re.IGNORECASE)
+    skills = re.findall(
+        r"(Python|Java|SQL|HTML|CSS|JavaScript|Machine Learning|Deep Learning|Data Science|R|C\+\+)",
+        text,
+        re.IGNORECASE,
+    )
+    tools = re.findall(
+        r"(TensorFlow|PyTorch|Pandas|NumPy|Excel|Git|Docker|Spark|scikit-learn|Eclipse|NetBeans|MySQL)",
+        text,
+        re.IGNORECASE,
+    )
 
     # --- Calculate total experience in months ---
     total_exp_months = 0
@@ -72,7 +87,7 @@ def parse_cv(text, candidate_id=9999):
         "Current_Role": "; ".join(current_roles) if current_roles else "-",
     }
 
-    return row, exp_patterns   # ✅ return both
+    return row, exp_patterns  # ✅ return both
 
 
 # --- Streamlit UI ---
@@ -101,7 +116,7 @@ if uploaded_file is not None:
                 <p><b>🌐 Language:</b> {row['Language_Proficiency']}</p>
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
     with col2:
@@ -111,23 +126,25 @@ if uploaded_file is not None:
                 box-shadow:0 4px 12px rgba(0,0,0,0.1);">
                 <p><b>👨‍🎓 Previous Internships:</b> {row['Previous_Internship']}</p>
                 <p><b>⏳ Experience:</b> {row['Experience']}</p>
-                
             </div>
             """,
-            unsafe_allow_html=True
+            unsafe_allow_html=True,
         )
 
     # --- Skills & Tools ---
     if row["Skills"] != "-":
         st.markdown("### 🛠 Skills & Tools")
         skills_list = [s.strip() for s in row["Skills"].split(",")]
-        skill_html = " ".join([
-            "<span style='background:#3498db;color:white;padding:6px 10px;border-radius:12px;margin:3px;display:inline-block;'>{}</span>".format(skill)
-            for skill in skills_list
-        ])
+        skill_html = " ".join(
+            [
+                "<span style='background:#3498db;color:white;padding:6px 10px;border-radius:12px;margin:3px;display:inline-block;'>{}</span>".format(
+                    skill
+                )
+                for skill in skills_list
+            ]
+        )
         st.markdown(skill_html, unsafe_allow_html=True)
 
-    # --- Detailed Experiences --
     # --- Download Section ---
     st.subheader("📥 Download Extracted Data")
     df = pd.DataFrame([row])
@@ -137,7 +154,28 @@ if uploaded_file is not None:
 
     st.download_button("⬇ Download CSV", data=csv, file_name="cv_aligned.csv", mime="text/csv")
     with open(excel_file, "rb") as f:
-        st.download_button("⬇ Download Excel", data=f, file_name="cv_aligned.xlsx",
-                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.download_button(
+            "⬇ Download Excel",
+            data=f,
+            file_name="cv_aligned.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
     if os.path.exists(excel_file):
         os.remove(excel_file)
+
+    # --- Save to Google Sheets ---
+    st.subheader("☁ Save to Google Sheets")
+
+    # Google Sheets setup
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
+    client = gspread.authorize(creds)
+
+    # Open your sheet by URL
+    sheet = client.open_by_url(
+        "https://docs.google.com/spreadsheets/d/1o7KkNumt_MSO-knsuZHNKnCq0fzCTfv-P0ArDzfvA4c/edit#gid=476317413"
+    ).sheet1
+
+    if st.button("💾 Save to Google Sheet"):
+        sheet.append_row(list(row.values()))
+        st.success("Candidate data saved to Google Sheet ✅")
